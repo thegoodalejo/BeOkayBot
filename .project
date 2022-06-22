@@ -3,6 +3,7 @@
 	<name>WtpBO</name>
 	<comment>Project WtpBO created by Buildship.</comment>
 	<projects>
+		<project>lib</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
