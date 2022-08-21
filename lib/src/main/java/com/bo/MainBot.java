@@ -34,12 +34,4 @@ public class MainBot {
 		}
 
 	}
-	public void initBot() throws InterruptedException {
-
-	}
-
-	public void end(){
-		MyDriver.instance().get().close();
-	}
-
 }
