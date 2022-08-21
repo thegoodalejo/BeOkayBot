@@ -1,7 +1,0 @@
-eclipse.preferences.version=1
-encoding//src/main/java/com/bo/messages/BasicMessage.java=UTF-8
-encoding//src/main/java/com/bo/messages/EndSesion.java=UTF-8
-encoding//src/main/java/com/bo/messages/InfoFactura.java=UTF-8
-encoding//src/main/java/com/bo/messages/Lobby.java=UTF-8
-encoding//src/main/java/com/bo/messages/NewUser.java=UTF-8
-encoding//src/main/java/com/bo/messages/ShoppingCar.java=UTF-8

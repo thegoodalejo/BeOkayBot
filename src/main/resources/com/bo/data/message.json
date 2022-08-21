@@ -1,0 +1,17 @@
+{
+  "messageTree": [
+    {"id": "1", "msg": "Hola bienvenido, selecciona 1 para continuar o 2 para finalizar ",
+      "options": [
+        {"id": "1","hook":  "2","actions": [{"type": "DB","field": "PRAY_FOR", "value":  "FAMILIA"}]},
+        {"id": "2","hook":  "2","actions": [{"type": "DB","field": "PRAY_FOR", "value":  "FAMILIA"}]}
+      ]
+    },
+    {"id": "2", "msg": "Hola soy el mensaje 2, selecciona las opciones 1 o 2",
+      "options": [
+        {"id": "1","hook":  "0","actions": [{"type": "DB","field": "CONTACT", "value":  "Si"},{"type": "END"}]},
+        {"id": "2","hook":  "0","actions": [{"type": "DB","field": "CONTACT", "value":  "No"},{"type": "END"}]}
+      ]
+    }],
+  "defaultMsg": "Error.",
+  "endSessionMsg": "Adios."
+}
