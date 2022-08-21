@@ -1,75 +1,110 @@
 package com.bo.queue;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import com.bo.actions.BotActions;
 import com.bo.db.FCS;
-import com.bo.messages.BasicMessage;
-import com.bo.messages.EndSesion;
+import com.bo.models.MessageOptions;
+import com.bo.models.MsgAction;
 import com.bo.models.User;
+import com.bo.singleton.MyDriver;
+import com.bo.ui.Ui;
+import com.bo.utils.BotWait;
+import com.bo.utils.MessageLoader;
 
 public class ChatQueue {
 
-	private static List<User> listRequest = new ArrayList<>();
+	private static List<User> listNewUsers = new ArrayList<>();
+	private static List<User> listToSendMsg = new ArrayList<>();
+	private static List<User> listToReadMsg = new ArrayList<>();
+	public static List<User> removeList = new ArrayList<>();
 
-	public static void add(String phone) {
-		User user;
-		user = FCS.getInstance().userInfo(phone);
-		if (user.getStatus().equals("New User")) {
-			user.setStatus("Registred User");
-			FCS.getInstance().addNewUser(user);
-		}
-		if (!user.isQueued()) {
-			user.setQueued(true);
-			FCS.getInstance().userUpdate("IS_QUEUED", "true", user.getPhone());
-			listRequest.add(user);
-		}
-		user.toString();
+	public static void addToNewUserQueue(User user) {
+		System.out.println("Adding [" + user.getUserDirection() + "] to readMsgQueue");
+		listNewUsers.add(user);
+		FCS.getInstance().userUpdate("DATE_TIME",""+ ZonedDateTime.now().toInstant().toEpochMilli(),user.getUserDirection());
+		FCS.getInstance().userUpdate("BOT_LISTENING","true",user.getUserDirection());
 	}
 
-	public static void setPending(int index, boolean isPending) {
-		listRequest.get(index).setPending(isPending);
-		listRequest.get(index).resetAtempts();
+	public static void addToSend(User user) {
+		System.out.println("Adding [" + user.getUserDirection() + "] to sendMsgQueue");
+		listToReadMsg.add(user);
+		FCS.getInstance().userUpdate("DATE_TIME",""+ ZonedDateTime.now().toInstant().toEpochMilli(),user.getUserDirection());
+		FCS.getInstance().userUpdate("BOT_LISTENING","true",user.getUserDirection());
 	}
 
-	public static void init() {
-		listRequest = FCS.getInstance().getRequest();
+	public static void initQueueFromLastSession() {
+		listToReadMsg = FCS.getInstance().getLastSession();
 	}
 
-	public static boolean isRequestEmpty() {
-		List<User> tempListRequest = new ArrayList<>();
-		tempListRequest.addAll(listRequest);
-		for (User user : tempListRequest) {
-			if(user.isEnding()) {
-				listRequest.remove(user);
+	public static void processList(){
+		processNewUsers();
+		processUsersToRead();
+		MyDriver.instance().refresh();
+		BotWait.forElementLong(Ui.sidePanel);
+	}
+
+	private static void processUsersToRead() {
+		if (listToReadMsg.isEmpty()) return;
+		System.out.println("Procesing queued users ¡!");
+		for (User user: listToReadMsg) {
+			BotWait.seconds(2);
+			String response = BotActions.getLastResponse(user.getUserDirection());
+			switch (response){
+				case "null":
+					System.out.println(user.getUserDirection() + " aun no responde...");
+				break;
+				default:
+					System.out.println("Last msg was -> " + response);
+					Map<String, MessageOptions> optionsMap;
+					try {
+						optionsMap = FCS.getInstance().userLastResponseOptions(user.getUserDirection());
+					}catch (NullPointerException e){
+						removeList.add(user);
+						BotActions.sendCommonMsgToUser(user.getUserDirection(),MessageLoader.endSessionMsg);
+						break;
+					}
+
+					MessageOptions messageOption;
+					try {
+						messageOption = optionsMap.get(response);
+						for (MsgAction action : messageOption.actionsList) {
+							action.excecute(user);
+						}
+						user.setUserLastResponse(messageOption.hookId);
+						BotActions.sendMsgToUser(user.getUserDirection(),messageOption.hookId);
+					}catch (NullPointerException e){
+						BotActions.sendCommonMsgToUser(user.getUserDirection(),MessageLoader.defaultMsg);
+						System.out.println("Null respuesta no valida -> " + MessageLoader.defaultMsg);//*/
+						System.out.println("q pdo");
+					}
+				break;
 			}
 		}
-		return listRequest.size() < 1;
+		removeUsersFromList(listToReadMsg);
+	}
+	private static void processNewUsers() {
+		if (listNewUsers.isEmpty()) return;
+		System.out.println("Processing new Users ¡¡¡¡");
+		for (User user: listNewUsers) {
+			BotWait.seconds(2);
+			BotActions.sendMsgToUser(user.getUserDirection());
+			listToReadMsg.add(user);
+		}
+		listNewUsers.clear();
 	}
 
 	public static List<User> getRequestList() {
-		return listRequest;
+		return listToSendMsg;
 	}
-
-	public static void clearRequest() {
-		listRequest.clear();
-	}
-	
-	public static void updateMsg(int index, BasicMessage newMsg) {
-		if (listRequest.get(index).increaseAtempts() || newMsg == null) {
-			System.out.println("EndSesion");
-			FCS.getInstance().userUpdate("IS_QUEUED", "false", listRequest.get(index).getPhone());
-			new  EndSesion(listRequest.get(index).getPhone(),true).messageRequest();
-			listRequest.get(index).setEnding();
-		}else {
-//			System.out.println(listRequest.get(index).getPhone() + " Updated");
-			listRequest.get(index).setMsg(newMsg);
+	public static void removeUsersFromList(List<User> targetList){
+		for (User user : removeList) {
+			targetList.remove(user);
 		}
-	}
-	
-	public static void popList() {
-		for (User user : listRequest) {
-			user.toString();
-		}
+		removeList.clear();
 	}
 }
+

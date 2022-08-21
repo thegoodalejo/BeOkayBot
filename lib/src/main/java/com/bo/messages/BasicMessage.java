@@ -2,8 +2,8 @@ package com.bo.messages;
 
 import java.util.concurrent.TimeUnit;
 
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.WebDriver;
+import com.bo.utils.BotWait;
+import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -14,7 +14,7 @@ public abstract class BasicMessage {
 
 	private WebDriver driver;
 	private static final String LINE = "\ue008\ue007\ue008";
-	protected final String errorMsg = "🤖: Ups... Respuesta incorrecta";
+	protected final String errorMsg = "Intenta con una de las opciones anteriores";
 	public boolean isLast = false;
 	public boolean isResponse = true;
 
@@ -25,24 +25,39 @@ public abstract class BasicMessage {
 		this.driver = MyDriver.instance().get();
 	}
 
-	public void goToPhone(String phone) throws InterruptedException {
+	public void goToPhone(String phone) {
+		BotWait.forElementShort(Ui.searchNumber);
 		driver.findElement(Ui.searchNumber).click();
 		driver.findElement(Ui.searchNumber).sendKeys(phone);
-		TimeUnit.MILLISECONDS.sleep(TIMEOUT);
-		driver.findElement(Ui.pickNumberResult).click();
+		By pickNumberResult = By.xpath("//div[@data-testid='cell-frame-container']//span[contains(text(),'"+phone+"')]");
+		BotWait.forElementLong(pickNumberResult);
+		try {
+			driver.findElement(pickNumberResult).click();
+		}catch (StaleElementReferenceException e){
+			System.out.println("Arleady in last msg element is not attached to the page document");
+		}catch (ElementClickInterceptedException e){
+			MyDriver.instance().get().navigate().refresh();
+		}
+
+		BotWait.forElementShort(Ui.backSearchNumber);
 		driver.findElement(Ui.backSearchNumber).click();
-		TimeUnit.MILLISECONDS.sleep(TIMEOUT);
 		try {
 			driver.findElement(Ui.downMsg).click();
+			System.out.println("Down to last msg");
 		} catch (NoSuchElementException e) {
-			TimeUnit.MILLISECONDS.sleep(TIMEOUT);
+			System.out.println("Arleady in last msg");
+		} catch (StaleElementReferenceException e){
+			System.out.println("Arleady in last msg element is not attached to the page document");
 		}
-		driver.findElement(Ui.txtChat).click();
+		BotWait.forElementShort(Ui.txtChatContainer);
+		driver.findElement(Ui.txtChatContainer).click();
 	}
 
 	protected void sendMessage(String msg) {
+		System.out.println("Sending msg -> " + msg);
 		driver.findElement(Ui.txtChat).sendKeys(msg);
 		driver.findElement(Ui.btnSendMsg).click();
+		System.out.println("Sended...");
 	}
 	
 	protected void muteAlerts() {
@@ -58,12 +73,7 @@ public abstract class BasicMessage {
 	}
 
 	protected String getLastMessage(String phone) {
-		try {
-			goToPhone(phone);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		goToPhone(phone);
 		String msgType = driver.findElement(Ui.ctrLastMsg).getAttribute("data-id");
 		if (msgType.contains("false")) {
 			try {
@@ -78,12 +88,7 @@ public abstract class BasicMessage {
 	}
 
 	protected String getLastOrder(String phone) {
-		try {
-			goToPhone(phone);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		goToPhone(phone);
 		String msgType = driver.findElement(Ui.ctrLastMsg).getAttribute("data-id");
 		if (msgType.contains("false")) {
 			try {
